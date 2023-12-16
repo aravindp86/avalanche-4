@@ -1,0 +1,70 @@
+// SPDX-License-Identifier: MIT
+pragma solidity ^0.8.18;
+
+import "@openzeppelin/contracts/token/ERC20/ERC20.sol";
+import "@openzeppelin/contracts/access/Ownable.sol";
+import "@openzeppelin/contracts/token/ERC20/extensions/ERC20Burnable.sol";
+
+contract Token is ERC20, Ownable, ERC20Burnable {
+    event PlayerRewarded(address indexed legatee, uint256 quota);
+    event ItemRedeemed(address indexed legatee, string item, uint256 cost);
+    event PlayerBalanceChecked(address indexed legatee, uint256 quota);
+    event RewardShared(address indexed sender, address indexed legatee, GameItem sharedItem);
+
+    enum GameItem {
+        Sword,
+        Shield,
+        Pistol
+    }
+
+    constructor(uint256 initialSupply, address initialLegatee) ERC20("CUSTOMTOKENV4", "CTKV4") Ownable(initialLegatee) {
+        _mint(initialLegatee, initialSupply);
+    }
+
+    function mint(address legatee, uint256 quota ) external onlyOwner {
+        _mint(legatee, quota);
+    }
+
+    function burn(uint256 quota) public override {
+        _burn(msg.sender, quota);
+    }
+
+    function transferTokens(address legatee, uint256 quota) external {
+        _transfer(msg.sender, legatee, quota);
+    }
+
+    function redeemGameItem(GameItem gameItem) external {
+        require(balanceOf(msg.sender) >= 1, "Not enough quotas!");
+
+        uint256 quotasToBurn;
+        string memory redeemedItem;
+
+        if (gameItem == GameItem.Sword) {
+            quotasToBurn = 10;
+            redeemedItem = "Sword";
+        } else if (gameItem == GameItem.Shield) {
+            quotasToBurn = 20;
+            redeemedItem = "Shield";
+        } else if (gameItem == GameItem.Pistol) {
+            quotasToBurn = 30;
+            redeemedItem = "Pistol";
+        } else {
+            revert("Invalid game item");
+        }
+
+        require(balanceOf(msg.sender) >= quotasToBurn, "Not enough quotas");
+        _burn(msg.sender, quotasToBurn);
+        emit ItemRedeemed(msg.sender, redeemedItem, quotasToBurn);
+    }
+
+    function checkBalance(address legatee) external view returns (uint256) {
+        return balanceOf(legatee);
+    }
+
+    function shareGameItem(address legatee, GameItem sharedItem) external {
+        require(legatee != address(0), "Invalid legatee address");
+        require(balanceOf(msg.sender) >= 1, "Not enough quotas for sharing");
+
+        emit RewardShared(msg.sender, legatee, sharedItem);
+    }
+}
